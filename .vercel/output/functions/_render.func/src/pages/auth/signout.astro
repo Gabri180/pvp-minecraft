@@ -1,9 +1,0 @@
----
-import { deleteSession, SESSION_COOKIE } from '../../lib/session';
-
-const token = Astro.cookies.get(SESSION_COOKIE)?.value;
-if (token) await deleteSession(token);
-
-Astro.cookies.delete(SESSION_COOKIE, { path: '/' });
-return Astro.redirect('/login');
----
