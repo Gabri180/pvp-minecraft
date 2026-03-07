@@ -37,7 +37,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       user_id: crypto.randomUUID(),
       username,
       email,
-      password_hash: hashPassword(password),
+      password: hashPassword(password),
       role: 'player',
     })
     .select('id, role')

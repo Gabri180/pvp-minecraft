@@ -18,7 +18,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const { error } = await supabase
     .from('profiles')
-    .update({ password_hash: hashPassword(password) })
+    .update({ password: hashPassword(password) })
     .eq('id', id);
 
   if (error) return redirect('/admin/users?err=' + encodeURIComponent(error.message));

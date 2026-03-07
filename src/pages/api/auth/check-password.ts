@@ -13,11 +13,11 @@ export const POST: APIRoute = async ({ request }) => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, password_hash, codigo')
+    .select('id, password, codigo')
     .eq('username', username)
     .single();
 
-  if (!profile || profile.password_hash !== hashPassword(password)) {
+  if (!profile || profile.password !== hashPassword(password)) {
     return new Response(JSON.stringify({ ok: false, error: 'Usuario o contraseña incorrectos' }), { status: 401 });
   }
 

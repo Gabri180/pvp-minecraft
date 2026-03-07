@@ -15,11 +15,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, role, password_hash, codigo')
+    .select('id, role, password, codigo')
     .eq('username', username)
     .single();
 
-  if (!profile || profile.password_hash !== hashPassword(password)) {
+  if (!profile || profile.password !== hashPassword(password)) {
     return redirect('/login?err=' + encodeURIComponent('Usuario o contraseña incorrectos'));
   }
 
