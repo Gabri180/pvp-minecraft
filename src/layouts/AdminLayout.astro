@@ -1,0 +1,48 @@
+---
+import Layout from './Layout.astro';
+import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+
+interface Props {
+  title?: string;
+  activeSection?: string;
+}
+
+const { title = 'Admin', activeSection = '' } = Astro.props;
+
+const token   = Astro.cookies.get(SESSION_COOKIE)?.value ?? '';
+const profile = token ? await getSessionProfile(token) : null;
+const username = profile?.username ?? 'Admin';
+
+const navItems = [
+  { href: '/admin',         label: '[ Dashboard ]', key: 'dashboard' },
+  { href: '/admin/users',   label: '[ Usuarios ]',  key: 'users' },
+  { href: '/admin/battles', label: '[ Batallas ]',  key: 'battles' },
+  { href: '/admin/stats',   label: '[ Stats ]',     key: 'stats' },
+];
+---
+<Layout title={`Admin: ${title}`}>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-section">Panel de Control</div>
+
+      {navItems.map(item => (
+        <a
+          href={item.href}
+          class:list={['admin-sidebar-item', { active: activeSection === item.key }]}
+        >
+          {item.label}
+        </a>
+      ))}
+
+      <div class="admin-sidebar-section" style="margin-top: auto;">Sesion</div>
+      <div style="padding: 8px 20px; font-size: 9px; color: var(--mc-light);">
+        {username}
+      </div>
+      <a href="/auth/signout" class="admin-sidebar-item" style="color: var(--mc-red);">[ Cerrar Sesion ]</a>
+    </aside>
+
+    <main class="admin-main">
+      <slot />
+    </main>
+  </div>
+</Layout>

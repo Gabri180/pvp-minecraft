@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+
+interface Props {
+  title?: string;
+  description?: string;
+  showNav?: boolean;
+}
+
+const { title = 'PvP Arena', description = 'Sistema de evaluacion PvP', showNav = true } = Astro.props;
+
+const token = Astro.cookies.get(SESSION_COOKIE)?.value;
+const profile = token ? await getSessionProfile(token) : null;
+const isLoggedIn = !!profile;
+const isAdmin    = profile?.role === 'admin';
+const pathname   = Astro.url.pathname;
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} | PvP Arena</title>
+  <meta name="description" content={description} />
+  <link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+  {showNav && (
+    <nav class="mc-nav">
+      <a href="/" class="mc-nav-logo">&#9888; PvP Arena</a>
+      <div class="mc-nav-links">
+        <a href="/" class:list={[{ active: pathname === '/' }]}>Inicio</a>
+        {isAdmin && (
+          <a href="/admin" class:list={[{ active: pathname.startsWith('/admin') }]}>Admin</a>
+        )}
+        {isLoggedIn ? (
+          <a href="/auth/signout" class="btn btn-red btn-sm">Salir</a>
+        ) : (
+          <a href="/login" class="btn btn-green btn-sm">Entrar</a>
+        )}
+      </div>
+    </nav>
+  )}
+  <slot />
+</body>
+</html>
