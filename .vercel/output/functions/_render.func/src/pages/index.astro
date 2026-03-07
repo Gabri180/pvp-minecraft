@@ -1,0 +1,105 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+import type { PlayerStats } from '../lib/supabase';
+
+const token   = Astro.cookies.get(SESSION_COOKIE)?.value;
+const profile = token ? await getSessionProfile(token) : null;
+const isAdmin = profile?.role === 'admin';
+
+const { data: statsRaw } = await supabase.rpc('get_player_stats').limit(10);
+const stats: PlayerStats[] = statsRaw ?? [];
+---
+<Layout title="Inicio">
+  <section style="
+    min-height: 55vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 24px 40px;
+    background: radial-gradient(ellipse at center, rgba(90,172,68,0.08) 0%, transparent 70%);
+    border-bottom: 4px solid var(--mc-green-dk);
+  ">
+    <div style="
+      font-size: clamp(24px, 5vw, 48px);
+      color: var(--mc-gold);
+      text-shadow: 4px 4px 0 rgba(0,0,0,0.9), 6px 6px 0 var(--mc-gold-dk);
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+      line-height: 1.4;
+    ">&#9876; PvP ARENA</div>
+    <div style="font-size: 11px; color: var(--mc-light); max-width: 500px; line-height: 2; margin-bottom: 36px;">
+      Sistema oficial de seguimiento y evaluacion de batallas PvP.
+      Registra tus victorias. Domina el ranking.
+    </div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;">
+      {profile ? (
+        isAdmin
+          ? <a href="/admin" class="btn btn-gold btn-lg">Panel Admin</a>
+          : <span class="btn btn-green btn-lg" style="cursor:default;">Bienvenido, {profile.username}</span>
+      ) : (
+        <a href="/login" class="btn btn-green btn-lg">Iniciar Sesion</a>
+      )}
+      <a href="#leaderboard" class="btn btn-gray btn-lg">Ver Ranking</a>
+    </div>
+  </section>
+
+  <section class="container page-content">
+    {stats.length > 0 ? (
+      <>
+        <div id="leaderboard" class="mc-card-title" style="margin-bottom: 16px; border: none; padding: 0; font-size: 14px;">
+          &#127942; RANKING GLOBAL
+        </div>
+        <div class="mc-card" style="padding: 0; overflow: hidden;">
+          <table class="mc-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Jugador</th>
+                <th>Batallas</th>
+                <th>Victorias</th>
+                <th>Derrotas</th>
+                <th>Draws</th>
+                <th>Win Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((s, i) => (
+                <tr>
+                  <td>
+                    <span style={`color: ${i === 0 ? 'var(--mc-gold)' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--mc-light)'}`}>
+                      {i === 0 ? '★' : i === 1 ? '✦' : i === 2 ? '◆' : `#${i + 1}`}
+                    </span>
+                  </td>
+                  <td style="color: var(--mc-green-lt);">{s.username ?? '?'}</td>
+                  <td>{s.total}</td>
+                  <td style="color: var(--mc-green-lt);">{s.wins}</td>
+                  <td style="color: var(--mc-red);">{s.losses}</td>
+                  <td style="color: var(--mc-light);">{s.draws}</td>
+                  <td>
+                    <span class={`badge ${s.winrate >= 60 ? 'badge-win' : s.winrate >= 40 ? 'badge-draw' : 'badge-loss'}`}>
+                      {s.winrate.toFixed(0)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    ) : (
+      <div class="mc-card text-center" style="padding: 60px;">
+        <div style="font-size: 40px; margin-bottom: 20px;">&#9876;</div>
+        <div style="color: var(--mc-light); font-size: 11px; line-height: 2.2;">
+          Aun no hay batallas registradas.<br/>
+          {isAdmin
+            ? <a href="/admin/battles">Agrega la primera batalla desde el panel admin</a>
+            : 'El admin debe registrar las primeras batallas.'}
+        </div>
+      </div>
+    )}
+  </section>
+</Layout>

@@ -1,0 +1,52 @@
+import { e as createComponent, k as renderComponent, l as renderScript, r as renderTemplate, h as createAstro, m as maybeRenderHead, g as addAttribute } from '../../chunks/astro/server_BRHZ-eMj.mjs';
+import 'piccolore';
+import { $ as $$AdminLayout } from '../../chunks/AdminLayout_R-Azu4Gb.mjs';
+import { s as supabase } from '../../chunks/supabase_C2eohQQp.mjs';
+export { renderers } from '../../renderers.mjs';
+
+const $$Astro = createAstro();
+const $$Users = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  Astro2.self = $$Users;
+  const { data: users } = await supabase.from("profiles").select("id, username, email, role, codigo, created_at").order("created_at", { ascending: false });
+  const profiles = users ?? [];
+  const msg = Astro2.url.searchParams.get("msg");
+  const err = Astro2.url.searchParams.get("err");
+  return renderTemplate`${renderComponent($$result, "AdminLayout", $$AdminLayout, { "title": "Usuarios", "activeSection": "users" }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<div class="flex-between mb-16"> <div class="mc-card-title" style="margin: 0; border: none; padding: 0; font-size: 16px;">
+&#128100; GESTION DE USUARIOS
+</div> <button id="btn-create-user" class="btn btn-green">+ Nuevo Usuario</button> </div> ${msg && renderTemplate`<div class="mc-alert mc-alert-success">${decodeURIComponent(msg)}</div>`}${err && renderTemplate`<div class="mc-alert mc-alert-error">${decodeURIComponent(err)}</div>`}<div class="mc-card" style="padding: 0; overflow: hidden;"> <table class="mc-table"> <thead> <tr> <th>Usuario</th> <th>Correo</th> <th>Codigo</th> <th>Rol</th> <th>Fecha</th> <th>Acciones</th> </tr> </thead> <tbody> ${profiles.length === 0 && renderTemplate`<tr> <td colspan="6" style="text-align: center; color: var(--mc-stone); padding: 32px;">
+No hay usuarios. Crea el primero.
+</td> </tr>`} ${profiles.map((u) => renderTemplate`<tr> <td style="color: var(--mc-white);">${u.username ?? "\u2014"}</td> <td style="color: var(--mc-light); font-size: 9px;">${u.email ?? "\u2014"}</td> <td> <span style="
+                font-family: monospace;
+                background: var(--mc-black);
+                border: 1px solid var(--mc-stone);
+                padding: 3px 8px;
+                font-size: 11px;
+                color: var(--mc-green-lt);
+                letter-spacing: 2px;
+              ">${u.codigo ?? "\u2014"}</span> </td> <td><span${addAttribute(`badge badge-${u.role}`, "class")}>${u.role}</span></td> <td style="color: var(--mc-light); font-size: 9px;"> ${new Date(u.created_at).toLocaleDateString("es")} </td> <td> <div style="display: flex; gap: 6px; flex-wrap: wrap;"> <button class="btn btn-gold btn-sm btn-set-codigo"${addAttribute(u.id, "data-id")}${addAttribute(u.username ?? "", "data-username")}${addAttribute(u.codigo ?? "", "data-codigo")}>
+Codigo
+</button> <button class="btn btn-blue btn-sm btn-set-password"${addAttribute(u.id, "data-id")}${addAttribute(u.username ?? "", "data-username")}>
+Pass
+</button> <button class="btn btn-gray btn-sm btn-edit-role"${addAttribute(u.id, "data-id")}${addAttribute(u.username ?? "", "data-username")}${addAttribute(u.role, "data-role")}>
+Rol
+</button> <button class="btn btn-red btn-sm btn-delete"${addAttribute(u.id, "data-id")}${addAttribute(u.username ?? "", "data-username")}>
+&#10005;
+</button> </div> </td> </tr>`)} </tbody> </table> </div> ` })} <!-- Modal: Crear usuario --> <div id="modal-create" class="mc-modal-backdrop" style="display:none;"> <div class="mc-modal"> <div class="mc-modal-title">+ NUEVO USUARIO</div> <form method="POST" action="/api/admin/create-user"> <label class="mc-label">Nombre de jugador *</label> <input name="username" type="text" class="mc-input" placeholder="NickPvP" required maxlength="30"> <label class="mc-label">Correo (opcional)</label> <input name="email" type="email" class="mc-input" placeholder="usuario@outlook.com"> <label class="mc-label">Contraseña *</label> <input name="password" type="text" class="mc-input" placeholder="Contraseña inicial" required> <label class="mc-label">Codigo de acceso *</label> <input name="codigo" type="text" class="mc-input" placeholder="Ej: MC-XYZ123" required> <label class="mc-label">Rol</label> <select name="role" class="mc-select"> <option value="player">Player</option> <option value="moderator">Moderator</option> <option value="admin">Admin</option> </select> <div style="display:flex; gap:12px; margin-top:8px;"> <button type="submit" class="btn btn-green" style="flex:1;">Crear</button> <button type="button" id="close-modal-create" class="btn btn-gray" style="flex:1;">Cancelar</button> </div> </form> </div> </div> <!-- Modal: Cambiar codigo --> <div id="modal-codigo" class="mc-modal-backdrop" style="display:none;"> <div class="mc-modal"> <div class="mc-modal-title">&#128273; CAMBIAR CODIGO</div> <form method="POST" action="/api/admin/set-codigo"> <input type="hidden" id="codigo-id" name="id"> <label class="mc-label">Usuario</label> <input class="mc-input" id="codigo-username" type="text" readonly style="color:var(--mc-light);"> <label class="mc-label">Codigo actual</label> <input class="mc-input" id="codigo-actual" type="text" readonly style="color:var(--mc-green-lt);font-family:monospace;letter-spacing:2px;"> <label class="mc-label">Nuevo codigo *</label> <input name="codigo" type="text" class="mc-input" placeholder="Nuevo codigo" required> <div style="display:flex; gap:12px; margin-top:8px;"> <button type="submit" class="btn btn-gold" style="flex:1;">Guardar</button> <button type="button" id="close-modal-codigo" class="btn btn-gray" style="flex:1;">Cancelar</button> </div> </form> </div> </div> <!-- Modal: Cambiar contraseña --> <div id="modal-password" class="mc-modal-backdrop" style="display:none;"> <div class="mc-modal"> <div class="mc-modal-title">&#128274; CAMBIAR CONTRASEÑA</div> <form method="POST" action="/api/admin/set-password"> <input type="hidden" id="pass-id" name="id"> <label class="mc-label">Usuario</label> <input class="mc-input" id="pass-username" type="text" readonly style="color:var(--mc-light);"> <label class="mc-label">Nueva contraseña *</label> <input name="password" type="text" class="mc-input" placeholder="Nueva contraseña" required> <div style="display:flex; gap:12px; margin-top:8px;"> <button type="submit" class="btn btn-blue" style="flex:1;">Guardar</button> <button type="button" id="close-modal-password" class="btn btn-gray" style="flex:1;">Cancelar</button> </div> </form> </div> </div> <!-- Modal: Cambiar rol --> <div id="modal-role" class="mc-modal-backdrop" style="display:none;"> <div class="mc-modal"> <div class="mc-modal-title">&#9998; CAMBIAR ROL</div> <form method="POST" action="/api/admin/update-role"> <input type="hidden" id="role-id" name="id"> <label class="mc-label">Usuario</label> <input class="mc-input" id="role-username" type="text" readonly style="color:var(--mc-light);"> <label class="mc-label">Nuevo Rol</label> <select name="role" id="role-select" class="mc-select"> <option value="player">Player</option> <option value="moderator">Moderator</option> <option value="admin">Admin</option> </select> <div style="display:flex; gap:12px; margin-top:8px;"> <button type="submit" class="btn btn-green" style="flex:1;">Guardar</button> <button type="button" id="close-modal-role" class="btn btn-gray" style="flex:1;">Cancelar</button> </div> </form> </div> </div> <!-- Modal: Borrar --> <div id="modal-delete" class="mc-modal-backdrop" style="display:none;"> <div class="mc-modal"> <div class="mc-modal-title" style="color:var(--mc-red);">&#9888; CONFIRMAR BORRADO</div> <p style="font-size:10px; color:var(--mc-light); line-height:2; margin-bottom:20px;">
+Eliminar a <strong id="delete-username" style="color:var(--mc-white);"></strong>. No se puede deshacer.
+</p> <form method="POST" action="/api/admin/delete-user"> <input type="hidden" id="delete-id" name="id"> <div style="display:flex; gap:12px;"> <button type="submit" class="btn btn-red" style="flex:1;">Eliminar</button> <button type="button" id="close-modal-delete" class="btn btn-gray" style="flex:1;">Cancelar</button> </div> </form> </div> </div> ${renderScript($$result, "C:/Users/marti/Desktop/Proyectos/web-pvp/src/pages/admin/users.astro?astro&type=script&index=0&lang.ts")}`;
+}, "C:/Users/marti/Desktop/Proyectos/web-pvp/src/pages/admin/users.astro", void 0);
+
+const $$file = "C:/Users/marti/Desktop/Proyectos/web-pvp/src/pages/admin/users.astro";
+const $$url = "/admin/users";
+
+const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: $$Users,
+  file: $$file,
+  url: $$url
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const page = () => _page;
+
+export { page };

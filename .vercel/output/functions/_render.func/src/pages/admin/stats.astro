@@ -1,0 +1,112 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { supabase } from '../../lib/supabase';
+import type { PlayerStats } from '../../lib/supabase';
+
+const { data: statsRaw } = await supabase.rpc('get_player_stats');
+const stats: PlayerStats[] = statsRaw ?? [];
+
+const { data: battlesRaw } = await supabase
+  .from('battles')
+  .select(`
+    id, date,
+    player1:profiles!battles_player1_id_fkey(username),
+    player2:profiles!battles_player2_id_fkey(username),
+    winner:profiles!battles_winner_id_fkey(username)
+  `)
+  .order('date', { ascending: false });
+
+const battles = battlesRaw ?? [];
+---
+<AdminLayout title="Estadisticas" activeSection="stats">
+  <div class="mc-card-title" style="font-size: 16px;">&#128202; ESTADISTICAS COMPLETAS</div>
+
+  <!-- Full leaderboard -->
+  <div class="mc-card" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+    <div class="mc-card-title" style="padding: 16px 20px; border-bottom: 2px solid var(--mc-stone); margin: 0;">
+      &#127942; TABLA DE CLASIFICACION
+    </div>
+    <table class="mc-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Jugador</th>
+          <th>Total</th>
+          <th>Victorias</th>
+          <th>Derrotas</th>
+          <th>Draws</th>
+          <th>Win Rate</th>
+          <th>Barra</th>
+        </tr>
+      </thead>
+      <tbody>
+        {stats.length === 0 && (
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--mc-stone); padding: 32px;">
+              Sin datos aun. Registra batallas primero.
+            </td>
+          </tr>
+        )}
+        {stats.map((s, i) => (
+          <tr>
+            <td>
+              <span style={`color: ${i === 0 ? 'var(--mc-gold)' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--mc-light)'}`}>
+                {i === 0 ? '★' : i === 1 ? '✦' : i === 2 ? '◆' : `#${i + 1}`}
+              </span>
+            </td>
+            <td style="color: var(--mc-white); font-weight: bold;">{s.username ?? '?'}</td>
+            <td>{s.total}</td>
+            <td style="color: var(--mc-green-lt);">{s.wins}</td>
+            <td style="color: var(--mc-red);">{s.losses}</td>
+            <td style="color: var(--mc-light);">{s.draws}</td>
+            <td>
+              <span class={`badge ${s.winrate >= 60 ? 'badge-win' : s.winrate >= 40 ? 'badge-draw' : 'badge-loss'}`}>
+                {s.winrate.toFixed(1)}%
+              </span>
+            </td>
+            <td style="min-width: 100px;">
+              <div style="background: var(--mc-gray); height: 8px; width: 100%; border: 1px solid var(--mc-stone);">
+                <div style={`height: 100%; width: ${Math.min(s.winrate, 100)}%; background: ${s.winrate >= 60 ? 'var(--mc-green)' : s.winrate >= 40 ? 'var(--mc-gold)' : 'var(--mc-red)'};`}></div>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Battle history -->
+  <div class="mc-card" style="padding: 0; overflow: hidden;">
+    <div class="mc-card-title" style="padding: 16px 20px; border-bottom: 2px solid var(--mc-stone); margin: 0;">
+      &#128200; HISTORIAL COMPLETO DE BATALLAS
+    </div>
+    <table class="mc-table">
+      <thead>
+        <tr><th>Fecha</th><th>Jugador 1</th><th>Jugador 2</th><th>Resultado</th></tr>
+      </thead>
+      <tbody>
+        {battles.length === 0 && (
+          <tr>
+            <td colspan="4" style="text-align: center; color: var(--mc-stone); padding: 32px;">
+              Sin batallas registradas.
+            </td>
+          </tr>
+        )}
+        {battles.map((b: any) => (
+          <tr>
+            <td style="color: var(--mc-light); font-size: 9px;">
+              {new Date(b.date).toLocaleDateString('es', { year: 'numeric', month: 'short', day: 'numeric' })}
+            </td>
+            <td style="color: var(--mc-green-lt);">{b.player1?.username ?? '?'}</td>
+            <td style="color: var(--mc-red);">{b.player2?.username ?? '?'}</td>
+            <td>
+              {b.winner
+                ? <span class="badge badge-win">&#9733; {b.winner.username}</span>
+                : <span class="badge badge-draw">Draw</span>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

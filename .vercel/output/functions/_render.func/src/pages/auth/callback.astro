@@ -1,0 +1,83 @@
+---
+// OAuth callback — handled client-side by Supabase, then we persist the session in cookies
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Autenticando...</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .loader {
+      width: 32px; height: 32px;
+      border: 4px solid #3a3a3a;
+      border-top-color: #5aac44;
+      border-radius: 0;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { font-size: 11px; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="loader"></div>
+  <p>VERIFICANDO SESION...</p>
+
+  <script>
+    import { supabase } from '../../lib/supabase';
+
+    async function handleCallback() {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error || !data.session) {
+        window.location.href = '/login?reason=auth';
+        return;
+      }
+
+      const session = data.session;
+
+      // Store tokens in cookies (7-day expiry)
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `sb-access-token=${session.access_token}; path=/; expires=${expires}; SameSite=Lax`;
+      document.cookie = `sb-refresh-token=${session.refresh_token}; path=/; expires=${expires}; SameSite=Lax`;
+
+      // Upsert profile
+      const userId = session.user.id;
+      const email = session.user.email ?? '';
+      const displayName =
+        session.user.user_metadata?.full_name ||
+        session.user.user_metadata?.name ||
+        email.split('@')[0];
+      const avatarUrl = session.user.user_metadata?.avatar_url ?? null;
+
+      await supabase.from('profiles').upsert(
+        { user_id: userId, username: displayName, email, avatar_url: avatarUrl },
+        { onConflict: 'user_id', ignoreDuplicates: false }
+      );
+
+      // Redirect based on role
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('user_id', userId).single();
+
+      if (profile?.role === 'admin') {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/';
+      }
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>
