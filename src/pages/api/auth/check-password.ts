@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, password_hash')
+    .select('id, password_hash, codigo')
     .eq('username', username)
     .single();
 
@@ -21,5 +21,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({ ok: false, error: 'Usuario o contraseña incorrectos' }), { status: 401 });
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  // Indica si el usuario tiene codigo asignado
+  const needsCodigo = !!profile.codigo;
+  return new Response(JSON.stringify({ ok: true, needsCodigo }), { status: 200 });
 };

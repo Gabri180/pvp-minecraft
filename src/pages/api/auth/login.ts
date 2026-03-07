@@ -7,9 +7,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const body     = await request.formData();
   const username = (body.get('username') as string)?.trim();
   const password = body.get('password') as string;
-  const codigo   = (body.get('codigo') as string)?.trim();
+  const codigo   = (body.get('codigo') as string)?.trim() || null;
 
-  if (!username || !password || !codigo) {
+  if (!username || !password) {
     return redirect('/login?err=' + encodeURIComponent('Completa todos los campos'));
   }
 
@@ -23,7 +23,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect('/login?err=' + encodeURIComponent('Usuario o contraseña incorrectos'));
   }
 
-  if (profile.codigo !== codigo) {
+  // Solo validar codigo si el usuario tiene uno asignado
+  if (profile.codigo && profile.codigo !== codigo) {
     return redirect('/login?err=' + encodeURIComponent('Codigo de acceso incorrecto') + '&step=2&user=' + encodeURIComponent(username));
   }
 
