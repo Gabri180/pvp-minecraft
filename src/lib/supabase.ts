@@ -41,6 +41,18 @@ export interface Battle {
   winner?: Profile;
 }
 
+export interface Challenge {
+  id: string;
+  challenger_id: string;
+  challenged_id: string;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  battle_id: string | null;
+  created_at: string;
+  challenger?: Pick<Profile, 'id' | 'username'>;
+  challenged?: Pick<Profile, 'id' | 'username'>;
+  battle?: Battle;
+}
+
 export interface PlayerStats {
   profile_id: string;
   username: string | null;

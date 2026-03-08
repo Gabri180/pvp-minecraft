@@ -1,0 +1,231 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+
+const token   = Astro.cookies.get(SESSION_COOKIE)?.value;
+const profile = token ? await getSessionProfile(token) : null;
+if (!profile) return Astro.redirect('/login?reason=auth');
+
+const msg = Astro.url.searchParams.get('msg');
+const err = Astro.url.searchParams.get('err');
+
+// Todos los jugadores para el formulario y lookups
+const { data: allProfiles } = await supabase
+  .from('profiles')
+  .select('id, username')
+  .order('username');
+
+const profileMap: Record<string, string> = {};
+for (const p of allProfiles ?? []) profileMap[p.id] = p.username ?? '?';
+const otherPlayers = (allProfiles ?? []).filter((p: any) => p.id !== profile.id);
+
+// Retos recibidos pendientes
+const { data: received } = await supabase
+  .from('challenges')
+  .select('id, challenger_id, created_at')
+  .eq('challenged_id', profile.id)
+  .eq('status', 'pending')
+  .order('created_at', { ascending: false });
+
+// Retos enviados pendientes
+const { data: sent } = await supabase
+  .from('challenges')
+  .select('id, challenged_id, created_at')
+  .eq('challenger_id', profile.id)
+  .eq('status', 'pending')
+  .order('created_at', { ascending: false });
+
+// Batallas aceptadas donde el resultado no ha sido reportado
+const { data: acceptedChallenges } = await supabase
+  .from('challenges')
+  .select('id, challenger_id, challenged_id, battle_id, created_at')
+  .eq('status', 'accepted')
+  .not('battle_id', 'is', null)
+  .or(`challenger_id.eq.${profile.id},challenged_id.eq.${profile.id}`)
+  .order('created_at', { ascending: false })
+  .limit(20);
+
+const battleIds = (acceptedChallenges ?? [])
+  .map((c: any) => c.battle_id)
+  .filter(Boolean) as string[];
+
+let battlesMap: Record<string, any> = {};
+if (battleIds.length > 0) {
+  const { data: bdata } = await supabase
+    .from('battles')
+    .select('id, player1_id, player2_id, winner_id, date')
+    .in('id', battleIds);
+  for (const b of bdata ?? []) battlesMap[b.id] = b;
+}
+
+const pendingResults = (acceptedChallenges ?? []).filter(
+  (c: any) => c.battle_id && battlesMap[c.battle_id] && battlesMap[c.battle_id].winner_id === null
+);
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h}h`;
+  return `hace ${Math.floor(h / 24)}d`;
+}
+---
+<Layout title="Retos">
+  <section class="container page-content">
+    <div class="mc-card-title" style="margin-bottom: 24px; border: none; padding: 0; font-size: 14px;">
+      &#9876; RETOS PvP
+    </div>
+
+    {msg && <div class="mc-alert mc-alert-success">{decodeURIComponent(msg)}</div>}
+    {err && <div class="mc-alert mc-alert-error">{decodeURIComponent(err)}</div>}
+
+    <!-- Enviar reto -->
+    <div class="mc-card" style="margin-bottom: 24px;">
+      <div style="font-size: 11px; color: var(--mc-gold); margin-bottom: 16px; letter-spacing: 2px;">
+        + RETAR A UN JUGADOR
+      </div>
+      {otherPlayers.length === 0 ? (
+        <p style="font-size: 10px; color: var(--mc-stone);">No hay otros jugadores registrados aun.</p>
+      ) : (
+        <form method="POST" action="/api/challenges/send" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <label class="mc-label">Selecciona tu rival</label>
+            <select name="challenged_id" class="mc-select" required>
+              <option value="">-- Seleccionar jugador --</option>
+              {otherPlayers.map((p: any) => (
+                <option value={p.id}>{p.username ?? p.id}</option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-gold" style="white-space: nowrap;">&#9876; Enviar Reto</button>
+        </form>
+      )}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+
+      <!-- Retos recibidos -->
+      <div class="mc-card">
+        <div style="font-size: 11px; color: var(--mc-red); margin-bottom: 16px; letter-spacing: 2px;">
+          &#9660; RETOS RECIBIDOS
+          {(received ?? []).length > 0 && (
+            <span class="badge badge-loss" style="margin-left: 8px;">{(received ?? []).length}</span>
+          )}
+        </div>
+        {(received ?? []).length === 0 ? (
+          <p style="font-size: 10px; color: var(--mc-stone); line-height: 2;">Nadie te ha retado aun.</p>
+        ) : (
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            {(received ?? []).map((c: any) => (
+              <div style="border: 2px solid var(--mc-red); padding: 12px; background: rgba(170,0,0,0.05);">
+                <div style="font-size: 10px; color: var(--mc-green-lt); margin-bottom: 8px;">
+                  <span style="color: var(--mc-gold);">{profileMap[c.challenger_id] ?? '?'}</span>
+                  {' '}te reta
+                  <span style="color: var(--mc-stone); margin-left: 8px;">{timeAgo(c.created_at)}</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <form method="POST" action="/api/challenges/respond" style="display: inline;">
+                    <input type="hidden" name="challenge_id" value={c.id} />
+                    <input type="hidden" name="action" value="accept" />
+                    <button type="submit" class="btn btn-green btn-sm">Aceptar</button>
+                  </form>
+                  <form method="POST" action="/api/challenges/respond" style="display: inline;">
+                    <input type="hidden" name="challenge_id" value={c.id} />
+                    <input type="hidden" name="action" value="decline" />
+                    <button type="submit" class="btn btn-red btn-sm">Rechazar</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- Retos enviados -->
+      <div class="mc-card">
+        <div style="font-size: 11px; color: var(--mc-green-lt); margin-bottom: 16px; letter-spacing: 2px;">
+          &#9650; RETOS ENVIADOS
+          {(sent ?? []).length > 0 && (
+            <span class="badge badge-draw" style="margin-left: 8px;">{(sent ?? []).length}</span>
+          )}
+        </div>
+        {(sent ?? []).length === 0 ? (
+          <p style="font-size: 10px; color: var(--mc-stone); line-height: 2;">No tienes retos enviados pendientes.</p>
+        ) : (
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            {(sent ?? []).map((c: any) => (
+              <div style="border: 2px solid var(--mc-green-dk); padding: 12px; background: rgba(90,172,68,0.05);">
+                <div style="font-size: 10px; color: var(--mc-light); margin-bottom: 8px;">
+                  Retaste a{' '}
+                  <span style="color: var(--mc-gold);">{profileMap[c.challenged_id] ?? '?'}</span>
+                  <span style="color: var(--mc-stone); margin-left: 8px;">{timeAgo(c.created_at)}</span>
+                </div>
+                <form method="POST" action="/api/challenges/cancel">
+                  <input type="hidden" name="challenge_id" value={c.id} />
+                  <button type="submit" class="btn btn-gray btn-sm">Cancelar</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Resultados pendientes -->
+    {pendingResults.length > 0 && (
+      <div class="mc-card">
+        <div style="font-size: 11px; color: var(--mc-gold); margin-bottom: 16px; letter-spacing: 2px;">
+          &#9203; REPORTAR RESULTADO
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          {pendingResults.map((c: any) => {
+            const battle = battlesMap[c.battle_id];
+            const p1name = profileMap[battle.player1_id] ?? '?';
+            const p2name = profileMap[battle.player2_id] ?? '?';
+            const iAmP1 = profile.id === battle.player1_id;
+            const myWinnerId  = iAmP1 ? battle.player1_id : battle.player2_id;
+            const oppWinnerId = iAmP1 ? battle.player2_id : battle.player1_id;
+            return (
+              <div style="border: 2px solid var(--mc-gold); padding: 16px; background: rgba(255,170,0,0.04);">
+                <div style="font-size: 11px; color: var(--mc-light); margin-bottom: 14px; text-align: center;">
+                  <span style="color: var(--mc-green-lt);">{p1name}</span>
+                  <span style="color: var(--mc-stone); margin: 0 12px;">VS</span>
+                  <span style="color: var(--mc-red);">{p2name}</span>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                  <form method="POST" action="/api/challenges/report-result" style="display: inline;">
+                    <input type="hidden" name="battle_id" value={battle.id} />
+                    <input type="hidden" name="winner_id" value={myWinnerId} />
+                    <button type="submit" class="btn btn-green btn-sm">Yo gane</button>
+                  </form>
+                  <form method="POST" action="/api/challenges/report-result" style="display: inline;">
+                    <input type="hidden" name="battle_id" value={battle.id} />
+                    <input type="hidden" name="winner_id" value="draw" />
+                    <button type="submit" class="btn btn-gray btn-sm">Empate</button>
+                  </form>
+                  <form method="POST" action="/api/challenges/report-result" style="display: inline;">
+                    <input type="hidden" name="battle_id" value={battle.id} />
+                    <input type="hidden" name="winner_id" value={oppWinnerId} />
+                    <button type="submit" class="btn btn-red btn-sm">Yo perdi</button>
+                  </form>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+
+    {pendingResults.length === 0 && (acceptedChallenges ?? []).length === 0 && (received ?? []).length === 0 && (sent ?? []).length === 0 && (
+      <div class="mc-card text-center" style="padding: 60px;">
+        <div style="font-size: 40px; margin-bottom: 20px;">&#9876;</div>
+        <div style="color: var(--mc-light); font-size: 11px; line-height: 2.2;">
+          No tienes retos activos.<br/>
+          Reta a alguien usando el formulario de arriba.
+        </div>
+      </div>
+    )}
+  </section>
+</Layout>

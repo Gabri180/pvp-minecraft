@@ -64,6 +64,7 @@ const stats: PlayerStats[] = statsRaw ?? [];
                 <th>Derrotas</th>
                 <th>Draws</th>
                 <th>Win Rate</th>
+                {profile && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -84,6 +85,16 @@ const stats: PlayerStats[] = statsRaw ?? [];
                       {s.winrate.toFixed(0)}%
                     </span>
                   </td>
+                  {profile && (
+                    <td>
+                      {s.profile_id !== profile.id && (
+                        <form method="POST" action="/api/challenges/send">
+                          <input type="hidden" name="challenged_id" value={s.profile_id} />
+                          <button type="submit" class="btn btn-gold btn-sm">Retar</button>
+                        </form>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
