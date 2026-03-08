@@ -7,6 +7,7 @@
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 0;
 
 -- ── Actualizar get_player_stats() para incluir puntos y ordenar por ellos ──
+DROP FUNCTION IF EXISTS public.get_player_stats();
 CREATE OR REPLACE FUNCTION public.get_player_stats()
 RETURNS TABLE (
   profile_id  UUID,
