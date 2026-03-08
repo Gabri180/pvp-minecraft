@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { supabase, supabaseAdmin } from '../../../lib/supabase';
 import { getSessionProfile, SESSION_COOKIE } from '../../../lib/session';
+import { recalculatePointsFor } from '../../../lib/points';
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const token   = cookies.get(SESSION_COOKIE)?.value;
@@ -50,6 +51,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     .eq('id', battle_id);
 
   if (error) return redirect('/challenges?err=' + encodeURIComponent(error.message));
+
+  await recalculatePointsFor(battle.player1_id, battle.player2_id);
 
   return redirect('/challenges?msg=' + encodeURIComponent('Resultado registrado correctamente'));
 };

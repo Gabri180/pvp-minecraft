@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+import { getSessionProfile, SESSION_COOKIE, IMPERSONATE_COOKIE } from '../lib/session';
 import { supabase } from '../lib/supabase';
 
 interface Props {
@@ -16,6 +16,8 @@ const profile = token ? await getSessionProfile(token) : null;
 const isLoggedIn = !!profile;
 const isAdmin    = profile?.role === 'admin';
 const pathname   = Astro.url.pathname;
+
+const isImpersonating = !!Astro.cookies.get(IMPERSONATE_COOKIE)?.value;
 
 let pendingChallenges = 0;
 if (profile) {
@@ -37,6 +39,33 @@ if (profile) {
   <link rel="icon" href="/favicon.ico" />
 </head>
 <body>
+  {isImpersonating && (
+    <div style="
+      background: var(--mc-gold);
+      color: #000;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      border-bottom: 3px solid #000;
+    ">
+      <span>&#128065; VISTA COMO: {profile?.username}</span>
+      <form method="POST" action="/api/admin/stop-impersonate" style="display:inline;">
+        <button type="submit" style="
+          background: #000;
+          color: var(--mc-gold);
+          border: none;
+          font-family: inherit;
+          font-size: 8px;
+          padding: 4px 10px;
+          cursor: pointer;
+        ">Salir de vista previa</button>
+      </form>
+    </div>
+  )}
   {showNav && (
     <nav class="mc-nav">
       <a href="/" class="mc-nav-logo">&#9888; PvP Arena</a>

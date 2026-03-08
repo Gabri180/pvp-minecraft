@@ -61,4 +61,5 @@ export interface PlayerStats {
   losses: number;
   draws: number;
   winrate: number;
+  points: number;
 }

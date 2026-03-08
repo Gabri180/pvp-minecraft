@@ -59,6 +59,7 @@ const stats: PlayerStats[] = statsRaw ?? [];
               <tr>
                 <th>#</th>
                 <th>Jugador</th>
+                <th style="color: var(--mc-gold);">Puntos</th>
                 <th>Batallas</th>
                 <th>Victorias</th>
                 <th>Derrotas</th>
@@ -76,6 +77,9 @@ const stats: PlayerStats[] = statsRaw ?? [];
                     </span>
                   </td>
                   <td style="color: var(--mc-green-lt);">{s.username ?? '?'}</td>
+                  <td>
+                    <span style="color: var(--mc-gold); font-weight: bold;">{s.points ?? 0}</span>
+                  </td>
                   <td>{s.total}</td>
                   <td style="color: var(--mc-green-lt);">{s.wins}</td>
                   <td style="color: var(--mc-red);">{s.losses}</td>

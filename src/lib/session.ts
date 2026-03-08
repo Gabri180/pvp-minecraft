@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 
-export const SESSION_COOKIE = 'pvp-session';
+export const SESSION_COOKIE    = 'pvp-session';
+export const IMPERSONATE_COOKIE = 'pvp-admin-token';
 const SESSION_DAYS = 7;
 
 export async function createSession(profileId: string): Promise<string> {
