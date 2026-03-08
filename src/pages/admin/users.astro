@@ -91,6 +91,12 @@ const TIERS = ['Unranked','Iron','Bronze','Silver','Gold','Platinum','Diamond','
                   data-tier={u.tier ?? 'Unranked'}>
                   &#9998; Editar
                 </button>
+                <form method="POST" action="/api/admin/impersonate" style="display:inline;">
+                  <input type="hidden" name="profile_id" value={u.id} />
+                  <button type="submit" class="btn btn-green btn-sm" title="Ver el sitio como este usuario">
+                    &#128065; Ver
+                  </button>
+                </form>
                 <button class="btn btn-red btn-sm btn-delete"
                   data-id={u.id} data-username={u.username ?? ''}>
                   &#10005;
