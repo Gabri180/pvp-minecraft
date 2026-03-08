@@ -28,7 +28,7 @@ export async function recalculatePoints(profileId: string): Promise<void> {
   }
 
   const db = supabaseAdmin ?? supabase;
-  await db.from('profiles').update({ points }).eq('id', profileId);
+  await db.from('profiles').update({ points, current_streak: streak }).eq('id', profileId);
 }
 
 /** Recalcula puntos para múltiples jugadores (deduplica IDs). */

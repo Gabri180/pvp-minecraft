@@ -28,16 +28,28 @@ const err = Astro.url.searchParams.get('err');
     <div class="mc-card-title" style="margin: 0; border: none; padding: 0; font-size: 16px;">
       &#9876; REGISTRO DE BATALLAS
     </div>
-    <button id="btn-add-battle" class="btn btn-green">+ Nueva Batalla</button>
+    <div style="display:flex; gap:8px;">
+      <button id="btn-bulk-delete-battles" class="btn btn-red btn-sm" style="display:none;">
+        &#10005; Eliminar seleccionadas (<span id="sel-battle-count">0</span>)
+      </button>
+      <button id="btn-add-battle" class="btn btn-green">+ Nueva Batalla</button>
+    </div>
   </div>
 
   {msg && <div class="mc-alert mc-alert-success">{decodeURIComponent(msg)}</div>}
   {err && <div class="mc-alert mc-alert-error">{decodeURIComponent(err)}</div>}
 
+  <form id="form-bulk-delete-battles" method="POST" action="/api/admin/bulk-delete-battles">
+    <input type="hidden" id="bulk-battle-ids" name="ids" />
+  </form>
+
   <div class="mc-card" style="padding: 0; overflow: hidden;">
     <table class="mc-table">
       <thead>
         <tr>
+          <th style="width:36px;">
+            <input type="checkbox" id="select-all-battles" title="Seleccionar todas" />
+          </th>
           <th>Jugador 1</th>
           <th>Jugador 2</th>
           <th>Resultado</th>
@@ -49,13 +61,16 @@ const err = Astro.url.searchParams.get('err');
       <tbody>
         {battles.length === 0 && (
           <tr>
-            <td colspan="6" style="text-align: center; color: var(--mc-stone); padding: 32px;">
+            <td colspan="7" style="text-align: center; color: var(--mc-stone); padding: 32px;">
               No hay batallas registradas. Agrega la primera.
             </td>
           </tr>
         )}
         {battles.map((b: any) => (
           <tr>
+            <td>
+              <input type="checkbox" class="row-select-battle" value={b.id} />
+            </td>
             <td style="color: var(--mc-green-lt);">{b.player1?.username ?? '?'}</td>
             <td style="color: var(--mc-red);">{b.player2?.username ?? '?'}</td>
             <td>
@@ -162,7 +177,7 @@ const err = Astro.url.searchParams.get('err');
 <script>
   const today = new Date().toISOString().split('T')[0];
 
-  // Add battle
+  // ── Add battle ──
   const modalBattle = document.getElementById('modal-battle')!;
   document.getElementById('btn-add-battle')?.addEventListener('click', () => {
     (document.getElementById('battle-id') as HTMLInputElement).value = '';
@@ -176,7 +191,7 @@ const err = Astro.url.searchParams.get('err');
     modalBattle.style.display = 'flex';
   });
 
-  // Edit battle
+  // ── Edit battle ──
   document.querySelectorAll('.btn-edit-battle').forEach(btn => {
     btn.addEventListener('click', () => {
       const el = btn as HTMLElement;
@@ -186,15 +201,14 @@ const err = Astro.url.searchParams.get('err');
       (document.getElementById('sel-winner') as HTMLSelectElement).value = el.dataset.winner ?? '';
       (document.getElementById('battle-date') as HTMLInputElement).value = el.dataset.date!;
       (document.getElementById('battle-notes') as HTMLInputElement).value = el.dataset.notes ?? '';
-      document.getElementById('modal-battle-title')!.textContent = '&#9998; EDITAR BATALLA';
+      document.getElementById('modal-battle-title')!.textContent = '✎ EDITAR BATALLA';
       (document.getElementById('form-battle') as HTMLFormElement).action = '/api/admin/update-battle';
       modalBattle.style.display = 'flex';
     });
   });
-
   document.getElementById('close-modal-battle')?.addEventListener('click', () => { modalBattle.style.display = 'none'; });
 
-  // Delete battle
+  // ── Delete battle ──
   const modalDelBattle = document.getElementById('modal-del-battle')!;
   document.querySelectorAll('.btn-del-battle').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -205,7 +219,39 @@ const err = Astro.url.searchParams.get('err');
   });
   document.getElementById('close-del-battle')?.addEventListener('click', () => { modalDelBattle.style.display = 'none'; });
 
-  // Close on backdrop
+  // ── Multi-select batallas ──
+  const battleCheckboxes  = () => [...document.querySelectorAll<HTMLInputElement>('.row-select-battle')];
+  const selectAllBattles  = document.getElementById('select-all-battles') as HTMLInputElement;
+  const bulkBattleBtn     = document.getElementById('btn-bulk-delete-battles')!;
+  const selBattleCount    = document.getElementById('sel-battle-count')!;
+  const bulkBattleIds     = document.getElementById('bulk-battle-ids') as HTMLInputElement;
+
+  function updateBattleBulkUI() {
+    const checked = battleCheckboxes().filter(c => c.checked);
+    selBattleCount.textContent = String(checked.length);
+    bulkBattleBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+    selectAllBattles.indeterminate = checked.length > 0 && checked.length < battleCheckboxes().length;
+    selectAllBattles.checked = checked.length > 0 && checked.length === battleCheckboxes().length;
+  }
+
+  selectAllBattles.addEventListener('change', () => {
+    battleCheckboxes().forEach(c => { c.checked = selectAllBattles.checked; });
+    updateBattleBulkUI();
+  });
+
+  document.querySelectorAll('.row-select-battle').forEach(c => {
+    c.addEventListener('change', updateBattleBulkUI);
+  });
+
+  bulkBattleBtn.addEventListener('click', () => {
+    const ids = battleCheckboxes().filter(c => c.checked).map(c => c.value);
+    if (ids.length === 0) return;
+    if (!confirm(`¿Eliminar ${ids.length} batalla(s)? Esto afectara las estadisticas.`)) return;
+    bulkBattleIds.value = ids.join(',');
+    (document.getElementById('form-bulk-delete-battles') as HTMLFormElement).submit();
+  });
+
+  // ── Cerrar modales al hacer clic en backdrop ──
   [modalBattle, modalDelBattle].forEach(modal => {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.style.display = 'none';

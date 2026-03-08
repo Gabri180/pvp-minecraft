@@ -24,7 +24,10 @@ export interface Profile {
   username: string | null;
   email: string | null;
   role: UserRole;
+  tier: string;
   avatar_url: string | null;
+  current_streak: number;
+  points: number;
   created_at: string;
 }
 
@@ -56,10 +59,12 @@ export interface Challenge {
 export interface PlayerStats {
   profile_id: string;
   username: string | null;
+  tier: string;
   total: number;
   wins: number;
   losses: number;
   draws: number;
   winrate: number;
   points: number;
+  current_streak: number;
 }

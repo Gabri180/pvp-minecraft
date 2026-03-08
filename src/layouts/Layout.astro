@@ -71,6 +71,7 @@ if (profile) {
       <a href="/" class="mc-nav-logo">&#9888; PvP Arena</a>
       <div class="mc-nav-links">
         <a href="/" class:list={[{ active: pathname === '/' }]}>Inicio</a>
+        <a href="/ranking" class:list={[{ active: pathname === '/ranking' }]}>Ranking</a>
         {isLoggedIn && (
           <a href="/challenges" class:list={[{ active: pathname.startsWith('/challenges') }]}
              style="position: relative;">

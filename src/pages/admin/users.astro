@@ -4,31 +4,46 @@ import { supabase } from '../../lib/supabase';
 
 const { data: users } = await supabase
   .from('profiles')
-  .select('id, username, email, role, codigo, created_at')
+  .select('id, username, email, role, codigo, tier, created_at')
   .order('created_at', { ascending: false });
 
 const profiles = users ?? [];
 const msg = Astro.url.searchParams.get('msg');
 const err = Astro.url.searchParams.get('err');
+
+const TIERS = ['Unranked','Iron','Bronze','Silver','Gold','Platinum','Diamond','Legend'];
 ---
 <AdminLayout title="Usuarios" activeSection="users">
   <div class="flex-between mb-16">
     <div class="mc-card-title" style="margin: 0; border: none; padding: 0; font-size: 16px;">
       &#128100; GESTION DE USUARIOS
     </div>
-    <button id="btn-create-user" class="btn btn-green">+ Nuevo Usuario</button>
+    <div style="display:flex; gap:8px;">
+      <button id="btn-bulk-delete" class="btn btn-red btn-sm" style="display:none;">
+        &#10005; Eliminar seleccionados (<span id="sel-count">0</span>)
+      </button>
+      <button id="btn-create-user" class="btn btn-green">+ Nuevo Usuario</button>
+    </div>
   </div>
 
   {msg && <div class="mc-alert mc-alert-success">{decodeURIComponent(msg)}</div>}
   {err && <div class="mc-alert mc-alert-error">{decodeURIComponent(err)}</div>}
 
+  <form id="form-bulk-delete-users" method="POST" action="/api/admin/bulk-delete-users">
+    <input type="hidden" id="bulk-user-ids" name="ids" />
+  </form>
+
   <div class="mc-card" style="padding: 0; overflow: hidden;">
     <table class="mc-table">
       <thead>
         <tr>
+          <th style="width:36px;">
+            <input type="checkbox" id="select-all-users" title="Seleccionar todos" />
+          </th>
           <th>Usuario</th>
           <th>Correo</th>
           <th>Codigo</th>
+          <th>Tier</th>
           <th>Rol</th>
           <th>Fecha</th>
           <th>Acciones</th>
@@ -37,13 +52,16 @@ const err = Astro.url.searchParams.get('err');
       <tbody>
         {profiles.length === 0 && (
           <tr>
-            <td colspan="6" style="text-align: center; color: var(--mc-stone); padding: 32px;">
+            <td colspan="8" style="text-align: center; color: var(--mc-stone); padding: 32px;">
               No hay usuarios. Crea el primero.
             </td>
           </tr>
         )}
         {profiles.map((u: any) => (
           <tr>
+            <td>
+              <input type="checkbox" class="row-select-user" value={u.id} />
+            </td>
             <td style="color: var(--mc-white);">{u.username ?? '—'}</td>
             <td style="color: var(--mc-light); font-size: 9px;">{u.email ?? '—'}</td>
             <td>
@@ -57,30 +75,22 @@ const err = Astro.url.searchParams.get('err');
                 letter-spacing: 2px;
               ">{u.codigo ?? '—'}</span>
             </td>
+            <td style="font-size: 9px; color: var(--mc-gold);">{u.tier ?? 'Unranked'}</td>
             <td><span class={`badge badge-${u.role}`}>{u.role}</span></td>
             <td style="color: var(--mc-light); font-size: 9px;">
               {new Date(u.created_at).toLocaleDateString('es')}
             </td>
             <td>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button class="btn btn-gold btn-sm btn-set-codigo"
-                  data-id={u.id} data-username={u.username ?? ''} data-codigo={u.codigo ?? ''}>
-                  Codigo
+                <button class="btn btn-blue btn-sm btn-edit-user"
+                  data-id={u.id}
+                  data-username={u.username ?? ''}
+                  data-email={u.email ?? ''}
+                  data-codigo={u.codigo ?? ''}
+                  data-role={u.role}
+                  data-tier={u.tier ?? 'Unranked'}>
+                  &#9998; Editar
                 </button>
-                <button class="btn btn-blue btn-sm btn-set-password"
-                  data-id={u.id} data-username={u.username ?? ''}>
-                  Pass
-                </button>
-                <button class="btn btn-gray btn-sm btn-edit-role"
-                  data-id={u.id} data-username={u.username ?? ''} data-role={u.role}>
-                  Rol
-                </button>
-                <form method="POST" action="/api/admin/impersonate" style="display:inline;">
-                  <input type="hidden" name="profile_id" value={u.id} />
-                  <button type="submit" class="btn btn-green btn-sm" title="Ver sitio como este usuario">
-                    &#128065; Ver
-                  </button>
-                </form>
                 <button class="btn btn-red btn-sm btn-delete"
                   data-id={u.id} data-username={u.username ?? ''}>
                   &#10005;
@@ -111,6 +121,11 @@ const err = Astro.url.searchParams.get('err');
       <label class="mc-label">Codigo de acceso *</label>
       <input name="codigo" type="text" class="mc-input" placeholder="Ej: MC-XYZ123" required />
 
+      <label class="mc-label">Tier</label>
+      <select name="tier" class="mc-select">
+        {TIERS.map(t => <option value={t}>{t}</option>)}
+      </select>
+
       <label class="mc-label">Rol</label>
       <select name="role" class="mc-select">
         <option value="player">Player</option>
@@ -126,61 +141,40 @@ const err = Astro.url.searchParams.get('err');
   </div>
 </div>
 
-<!-- Modal: Cambiar codigo -->
-<div id="modal-codigo" class="mc-modal-backdrop" style="display:none;">
-  <div class="mc-modal">
-    <div class="mc-modal-title">&#128273; CAMBIAR CODIGO</div>
-    <form method="POST" action="/api/admin/set-codigo">
-      <input type="hidden" id="codigo-id" name="id" />
-      <label class="mc-label">Usuario</label>
-      <input class="mc-input" id="codigo-username" type="text" readonly style="color:var(--mc-light);" />
-      <label class="mc-label">Codigo actual</label>
-      <input class="mc-input" id="codigo-actual" type="text" readonly style="color:var(--mc-green-lt);font-family:monospace;letter-spacing:2px;" />
-      <label class="mc-label">Nuevo codigo *</label>
-      <input name="codigo" type="text" class="mc-input" placeholder="Nuevo codigo" required />
-      <div style="display:flex; gap:12px; margin-top:8px;">
-        <button type="submit" class="btn btn-gold" style="flex:1;">Guardar</button>
-        <button type="button" id="close-modal-codigo" class="btn btn-gray" style="flex:1;">Cancelar</button>
-      </div>
-    </form>
-  </div>
-</div>
+<!-- Modal: Editar usuario (unificado) -->
+<div id="modal-edit-user" class="mc-modal-backdrop" style="display:none;">
+  <div class="mc-modal" style="max-width: 480px;">
+    <div class="mc-modal-title">&#9998; EDITAR USUARIO</div>
+    <form method="POST" action="/api/admin/update-user">
+      <input type="hidden" id="edit-id" name="id" />
 
-<!-- Modal: Cambiar contraseña -->
-<div id="modal-password" class="mc-modal-backdrop" style="display:none;">
-  <div class="mc-modal">
-    <div class="mc-modal-title">&#128274; CAMBIAR CONTRASEÑA</div>
-    <form method="POST" action="/api/admin/set-password">
-      <input type="hidden" id="pass-id" name="id" />
-      <label class="mc-label">Usuario</label>
-      <input class="mc-input" id="pass-username" type="text" readonly style="color:var(--mc-light);" />
-      <label class="mc-label">Nueva contraseña *</label>
-      <input name="password" type="text" class="mc-input" placeholder="Nueva contraseña" required />
-      <div style="display:flex; gap:12px; margin-top:8px;">
-        <button type="submit" class="btn btn-blue" style="flex:1;">Guardar</button>
-        <button type="button" id="close-modal-password" class="btn btn-gray" style="flex:1;">Cancelar</button>
-      </div>
-    </form>
-  </div>
-</div>
+      <label class="mc-label">Nombre de jugador *</label>
+      <input id="edit-username" name="username" type="text" class="mc-input" required maxlength="30" />
 
-<!-- Modal: Cambiar rol -->
-<div id="modal-role" class="mc-modal-backdrop" style="display:none;">
-  <div class="mc-modal">
-    <div class="mc-modal-title">&#9998; CAMBIAR ROL</div>
-    <form method="POST" action="/api/admin/update-role">
-      <input type="hidden" id="role-id" name="id" />
-      <label class="mc-label">Usuario</label>
-      <input class="mc-input" id="role-username" type="text" readonly style="color:var(--mc-light);" />
-      <label class="mc-label">Nuevo Rol</label>
-      <select name="role" id="role-select" class="mc-select">
+      <label class="mc-label">Correo</label>
+      <input id="edit-email" name="email" type="email" class="mc-input" placeholder="(opcional)" />
+
+      <label class="mc-label">Nueva contraseña</label>
+      <input id="edit-password" name="password" type="text" class="mc-input" placeholder="Dejar en blanco para no cambiar" />
+
+      <label class="mc-label">Codigo de acceso</label>
+      <input id="edit-codigo" name="codigo" type="text" class="mc-input" placeholder="(opcional)" />
+
+      <label class="mc-label">Tier</label>
+      <select id="edit-tier" name="tier" class="mc-select">
+        {TIERS.map(t => <option value={t}>{t}</option>)}
+      </select>
+
+      <label class="mc-label">Rol</label>
+      <select id="edit-role" name="role" class="mc-select">
         <option value="player">Player</option>
         <option value="moderator">Moderator</option>
         <option value="admin">Admin</option>
       </select>
+
       <div style="display:flex; gap:12px; margin-top:8px;">
-        <button type="submit" class="btn btn-green" style="flex:1;">Guardar</button>
-        <button type="button" id="close-modal-role" class="btn btn-gray" style="flex:1;">Cancelar</button>
+        <button type="submit" class="btn btn-blue" style="flex:1;">Guardar</button>
+        <button type="button" id="close-modal-edit-user" class="btn btn-gray" style="flex:1;">Cancelar</button>
       </div>
     </form>
   </div>
@@ -204,54 +198,73 @@ const err = Astro.url.searchParams.get('err');
 </div>
 
 <script>
-  function open(id: string)  { document.getElementById(id)!.style.display = 'flex'; }
-  function close(id: string) { document.getElementById(id)!.style.display = 'none'; }
+  function openModal(id: string)  { document.getElementById(id)!.style.display = 'flex'; }
+  function closeModal(id: string) { document.getElementById(id)!.style.display = 'none'; }
 
-  document.getElementById('btn-create-user')?.addEventListener('click', () => open('modal-create'));
-  document.getElementById('close-modal-create')?.addEventListener('click', () => close('modal-create'));
+  // ── Crear usuario ──
+  document.getElementById('btn-create-user')?.addEventListener('click', () => openModal('modal-create'));
+  document.getElementById('close-modal-create')?.addEventListener('click', () => closeModal('modal-create'));
 
-  document.querySelectorAll('.btn-set-codigo').forEach(btn => {
+  // ── Editar usuario (modal unificado) ──
+  document.querySelectorAll('.btn-edit-user').forEach(btn => {
     btn.addEventListener('click', () => {
       const el = btn as HTMLElement;
-      (document.getElementById('codigo-id') as HTMLInputElement).value      = el.dataset.id!;
-      (document.getElementById('codigo-username') as HTMLInputElement).value = el.dataset.username!;
-      (document.getElementById('codigo-actual') as HTMLInputElement).value   = el.dataset.codigo || '(sin codigo)';
-      open('modal-codigo');
+      (document.getElementById('edit-id')       as HTMLInputElement).value  = el.dataset.id!;
+      (document.getElementById('edit-username') as HTMLInputElement).value  = el.dataset.username!;
+      (document.getElementById('edit-email')    as HTMLInputElement).value  = el.dataset.email ?? '';
+      (document.getElementById('edit-codigo')   as HTMLInputElement).value  = el.dataset.codigo ?? '';
+      (document.getElementById('edit-password') as HTMLInputElement).value  = '';
+      (document.getElementById('edit-role')     as HTMLSelectElement).value = el.dataset.role!;
+      (document.getElementById('edit-tier')     as HTMLSelectElement).value = el.dataset.tier ?? 'Unranked';
+      openModal('modal-edit-user');
     });
   });
-  document.getElementById('close-modal-codigo')?.addEventListener('click', () => close('modal-codigo'));
+  document.getElementById('close-modal-edit-user')?.addEventListener('click', () => closeModal('modal-edit-user'));
 
-  document.querySelectorAll('.btn-set-password').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const el = btn as HTMLElement;
-      (document.getElementById('pass-id') as HTMLInputElement).value       = el.dataset.id!;
-      (document.getElementById('pass-username') as HTMLInputElement).value = el.dataset.username!;
-      open('modal-password');
-    });
-  });
-  document.getElementById('close-modal-password')?.addEventListener('click', () => close('modal-password'));
-
-  document.querySelectorAll('.btn-edit-role').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const el = btn as HTMLElement;
-      (document.getElementById('role-id') as HTMLInputElement).value       = el.dataset.id!;
-      (document.getElementById('role-username') as HTMLInputElement).value = el.dataset.username!;
-      (document.getElementById('role-select') as HTMLSelectElement).value  = el.dataset.role!;
-      open('modal-role');
-    });
-  });
-  document.getElementById('close-modal-role')?.addEventListener('click', () => close('modal-role'));
-
+  // ── Borrar usuario ──
   document.querySelectorAll('.btn-delete').forEach(btn => {
     btn.addEventListener('click', () => {
       const el = btn as HTMLElement;
       (document.getElementById('delete-id') as HTMLInputElement).value = el.dataset.id!;
       document.getElementById('delete-username')!.textContent = el.dataset.username!;
-      open('modal-delete');
+      openModal('modal-delete');
     });
   });
-  document.getElementById('close-modal-delete')?.addEventListener('click', () => close('modal-delete'));
+  document.getElementById('close-modal-delete')?.addEventListener('click', () => closeModal('modal-delete'));
 
+  // ── Multi-select ──
+  const checkboxes  = () => [...document.querySelectorAll<HTMLInputElement>('.row-select-user')];
+  const selectAll   = document.getElementById('select-all-users') as HTMLInputElement;
+  const bulkBtn     = document.getElementById('btn-bulk-delete')!;
+  const selCount    = document.getElementById('sel-count')!;
+  const bulkIdsInput = document.getElementById('bulk-user-ids') as HTMLInputElement;
+
+  function updateBulkUI() {
+    const checked = checkboxes().filter(c => c.checked);
+    selCount.textContent = String(checked.length);
+    bulkBtn.style.display = checked.length > 0 ? 'inline-block' : 'none';
+    selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes().length;
+    selectAll.checked = checked.length > 0 && checked.length === checkboxes().length;
+  }
+
+  selectAll.addEventListener('change', () => {
+    checkboxes().forEach(c => { c.checked = selectAll.checked; });
+    updateBulkUI();
+  });
+
+  document.querySelectorAll('.row-select-user').forEach(c => {
+    c.addEventListener('change', updateBulkUI);
+  });
+
+  bulkBtn.addEventListener('click', () => {
+    const ids = checkboxes().filter(c => c.checked).map(c => c.value);
+    if (ids.length === 0) return;
+    if (!confirm(`¿Eliminar ${ids.length} usuario(s)? Esta accion no se puede deshacer.`)) return;
+    bulkIdsInput.value = ids.join(',');
+    (document.getElementById('form-bulk-delete-users') as HTMLFormElement).submit();
+  });
+
+  // ── Cerrar modales al hacer clic en el backdrop ──
   document.querySelectorAll('.mc-modal-backdrop').forEach(b => {
     b.addEventListener('click', e => { if (e.target === b) (b as HTMLElement).style.display = 'none'; });
   });

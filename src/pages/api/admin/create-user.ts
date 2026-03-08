@@ -15,6 +15,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const password = body.get('password') as string;
   const codigo   = (body.get('codigo') as string)?.trim();
   const role     = (body.get('role') as UserRole) ?? 'player';
+  const tier     = (body.get('tier') as string)?.trim() || 'Unranked';
 
   if (!username || !password || !codigo) {
     return redirect('/admin/users?err=' + encodeURIComponent('Nombre, contraseña y codigo son requeridos'));
@@ -33,6 +34,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     password: hashPassword(password),
     codigo,
     role,
+    tier,
   });
 
   if (error) return redirect('/admin/users?err=' + encodeURIComponent(error.message));

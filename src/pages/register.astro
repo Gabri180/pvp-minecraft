@@ -90,6 +90,18 @@ const err = Astro.url.searchParams.get('err');
             autocomplete="new-password"
           />
 
+          <label class="mc-label">Tier</label>
+          <select name="tier" class="mc-select">
+            <option value="Unranked">Unranked</option>
+            <option value="Iron">Iron</option>
+            <option value="Bronze">Bronze</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+            <option value="Platinum">Platinum</option>
+            <option value="Diamond">Diamond</option>
+            <option value="Legend">Legend</option>
+          </select>
+
           <div id="pass-mismatch" style="
             display: none;
             font-size: 9px;

@@ -9,6 +9,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email    = (body.get('email') as string)?.trim() || null;
   const password = body.get('password') as string;
   const confirm  = body.get('confirm') as string;
+  const tier     = (body.get('tier') as string)?.trim() || 'Unranked';
 
   if (!username || !password) {
     return redirect('/register?err=' + encodeURIComponent('El nombre y la contraseña son requeridos'));
@@ -39,6 +40,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       email,
       password: hashPassword(password),
       role: 'player',
+      tier,
     })
     .select('id, role')
     .single();

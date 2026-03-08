@@ -1,0 +1,114 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+import { getSessionProfile, SESSION_COOKIE } from '../lib/session';
+import type { PlayerStats } from '../lib/supabase';
+
+const token   = Astro.cookies.get(SESSION_COOKIE)?.value;
+const profile = token ? await getSessionProfile(token) : null;
+
+const { data: statsRaw } = await supabase.rpc('get_player_stats');
+const stats: PlayerStats[] = statsRaw ?? [];
+
+function tierColor(tier: string): string {
+  const map: Record<string, string> = {
+    'Unranked': 'var(--mc-stone)',
+    'Iron':     '#8B8B8B',
+    'Bronze':   '#CD7F32',
+    'Silver':   '#C0C0C0',
+    'Gold':     'var(--mc-gold)',
+    'Platinum': '#E8E8E8',
+    'Diamond':  'var(--mc-diamond)',
+    'Legend':   '#FF4500',
+  };
+  return map[tier] ?? 'var(--mc-stone)';
+}
+
+function streakLabel(n: number): string {
+  if (n <= 0) return '—';
+  if (n >= 5) return `${n} 🔥`;
+  if (n >= 3) return `${n} ⚡`;
+  return `${n}`;
+}
+---
+<Layout title="Ranking">
+  <section class="container page-content">
+    <div class="mc-card-title" style="margin-bottom: 8px; border: none; padding: 0; font-size: 14px;">
+      &#127942; RANKING GLOBAL
+    </div>
+    <div style="font-size: 9px; color: var(--mc-stone); margin-bottom: 24px;">
+      {stats.length} jugadores clasificados · ordenado por puntos
+    </div>
+
+    {stats.length === 0 ? (
+      <div class="mc-card text-center" style="padding: 60px;">
+        <div style="font-size: 40px; margin-bottom: 20px;">&#9876;</div>
+        <div style="color: var(--mc-light); font-size: 11px; line-height: 2.2;">
+          Aun no hay batallas registradas.
+        </div>
+      </div>
+    ) : (
+      <div class="mc-card" style="padding: 0; overflow: hidden;">
+        <table class="mc-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jugador</th>
+              <th>Tier</th>
+              <th style="color: var(--mc-gold);">Puntos</th>
+              <th title="Racha de victorias actual">Racha</th>
+              <th>Batallas</th>
+              <th>Victorias</th>
+              <th>Derrotas</th>
+              <th>Draws</th>
+              <th>Win Rate</th>
+              {profile && <th></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map((s, i) => (
+              <tr>
+                <td>
+                  <span style={`color: ${i === 0 ? 'var(--mc-gold)' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'var(--mc-light)'}`}>
+                    {i === 0 ? '★' : i === 1 ? '✦' : i === 2 ? '◆' : `#${i + 1}`}
+                  </span>
+                </td>
+                <td style="color: var(--mc-green-lt);">{s.username ?? '?'}</td>
+                <td>
+                  <span style={`color: ${tierColor(s.tier ?? 'Unranked')}; font-size: 9px;`}>
+                    {s.tier ?? 'Unranked'}
+                  </span>
+                </td>
+                <td>
+                  <span style="color: var(--mc-gold); font-weight: bold;">{s.points ?? 0}</span>
+                </td>
+                <td style="color: var(--mc-green-lt); font-size: 10px;">
+                  {streakLabel(s.current_streak ?? 0)}
+                </td>
+                <td>{s.total}</td>
+                <td style="color: var(--mc-green-lt);">{s.wins}</td>
+                <td style="color: var(--mc-red);">{s.losses}</td>
+                <td style="color: var(--mc-light);">{s.draws}</td>
+                <td>
+                  <span class={`badge ${s.winrate >= 60 ? 'badge-win' : s.winrate >= 40 ? 'badge-draw' : 'badge-loss'}`}>
+                    {s.winrate.toFixed(0)}%
+                  </span>
+                </td>
+                {profile && (
+                  <td>
+                    {s.profile_id !== profile.id && (
+                      <form method="POST" action="/api/challenges/send">
+                        <input type="hidden" name="challenged_id" value={s.profile_id} />
+                        <button type="submit" class="btn btn-gold btn-sm">Retar</button>
+                      </form>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+</Layout>
