@@ -9,7 +9,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email    = (body.get('email') as string)?.trim() || null;
   const password = body.get('password') as string;
   const confirm  = body.get('confirm') as string;
-  const tier     = (body.get('tier') as string)?.trim() || 'Unranked';
+  const tier     = (body.get('tier') as string)?.trim() || 'lt2';
 
   if (!username || !password) {
     return redirect('/register?err=' + encodeURIComponent('El nombre y la contraseña son requeridos'));

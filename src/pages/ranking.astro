@@ -12,14 +12,14 @@ const stats: PlayerStats[] = statsRaw ?? [];
 
 function tierColor(tier: string): string {
   const map: Record<string, string> = {
-    'Unranked': 'var(--mc-stone)',
-    'Iron':     '#8B8B8B',
-    'Bronze':   '#CD7F32',
-    'Silver':   '#C0C0C0',
-    'Gold':     'var(--mc-gold)',
-    'Platinum': '#E8E8E8',
-    'Diamond':  'var(--mc-diamond)',
-    'Legend':   '#FF4500',
+    'lt2': '#8B8B8B',
+    'ht2': '#C0C0C0',
+    'lt3': '#CD7F32',
+    'ht3': '#e8a84c',
+    'lt4': 'var(--mc-gold)',
+    'ht4': '#ffe066',
+    'lt5': 'var(--mc-diamond)',
+    'ht5': '#FF4500',
   };
   return map[tier] ?? 'var(--mc-stone)';
 }

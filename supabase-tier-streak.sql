@@ -4,7 +4,7 @@
 -- ============================================================
 
 -- ── Nuevas columnas en profiles ──
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier           TEXT    NOT NULL DEFAULT 'Unranked';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier           TEXT    NOT NULL DEFAULT 'lt2';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS current_streak INTEGER NOT NULL DEFAULT 0;
 
 -- ── Actualizar get_player_stats() con tier y racha ──
